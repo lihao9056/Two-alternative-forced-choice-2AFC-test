@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>强制选择对比判断工具 (基于名称配对)</title>
+    <title>强制选择对比判断工具 (严格名称配对)</title>
     <style>
         /* CSS 样式保持不变，因为布局和外观没有变化 */
         * {
@@ -406,7 +406,7 @@
             gameOverOkBtn: document.getElementById('game-over-ok')
         };
 
-        // 初始化应用 (保持不变)
+        // 初始化应用
         function initApp() {
             setupEventListeners();
             elements.totalTasksCount.textContent = 0;
@@ -414,7 +414,7 @@
             elements.nameModal.style.display = 'flex';
         }
 
-        // 设置事件监听器 (保持不变)
+        // 设置事件监听器
         function setupEventListeners() {
             elements.confirmNameBtn.addEventListener('click', confirmPlayerName);
             elements.selectFolderBtn.addEventListener('click', selectImageFolder);
@@ -430,7 +430,7 @@
             });
         }
 
-        // 确认玩家姓名 (保持不变)
+        // 确认玩家姓名
         function confirmPlayerName() {
             const name = elements.playerNameInput.value.trim();
             appState.playerName = name || "匿名玩家";
@@ -438,7 +438,7 @@
             elements.nameModal.style.display = 'none';
         }
 
-        // 选择图像父文件夹 (略微修改提示和文件名处理)
+        // 选择图像父文件夹
         function selectImageFolder() {
             const input = document.createElement('input');
             input.type = 'file';
@@ -463,7 +463,7 @@
                 prepareComparisonPairs();
                 
                 if (appState.comparisonPairs.length === 0) {
-                    alert('未找到任何匹配的图像对。请检查 Model 文件名中第一个下划线后的部分是否能匹配到 3T 文件夹中的文件名。');
+                    alert('未找到任何配对成功的图像对。请检查文件命名规则：Model 和 3T 文件名中第一个下划线后的部分必须严格相同。');
                     return;
                 }
 
@@ -474,8 +474,8 @@
         }
 
         /**
-         * 提取配对键：Model 文件名中第一个下划线之后的所有部分。
-         * @param {string} filename 文件名，如 "A_B_C.png"
+         * 【修正】提取配对键：Model/3T 文件名中第一个下划线之后的所有部分。
+         * @param {string} filename 文件名，如 "A_B_C.png" 或 "M_B_C.png"
          * @returns {string | null} 配对键，如 "B_C.png"
          */
         function extractMatchKey(filename) {
@@ -483,7 +483,8 @@
             if (firstUnderscoreIndex === -1) {
                 return null; // 没有下划线，无法配对
             }
-            return filename.substring(firstUnderscoreIndex + 1);
+            // 返回第一个下划线之后的所有内容
+            return filename.substring(firstUnderscoreIndex + 1); 
         }
 
 
@@ -491,29 +492,34 @@
         function prepareComparisonPairs() {
             appState.comparisonPairs = [];
             
-            // 1. 构建 3T 文件的 Map，以文件名中的匹配键为 Key
+            // 1. 【修正】构建 3T 文件的 Map，键为配对标准 (第一个下划线之后的部分)
             // Key: "B_C.png" -> Value: File Object (3T 文件)
             appState.threeTMap.clear();
             appState.files3T.forEach(file => {
-                // 3T 文件名全部用于匹配，例如 "B_D_E.png"
-                appState.threeTMap.set(file.name, file);
+                const key = extractMatchKey(file.name);
+                if (key) {
+                    // 如果多个 3T 文件配对键相同，取第一个（您这里假设是一一对应）
+                    if (!appState.threeTMap.has(key)) {
+                        appState.threeTMap.set(key, file);
+                    } else {
+                        console.warn(`警告: 3T 文件配对键重复: ${key}`);
+                    }
+                }
             });
 
-            // 2. 遍历 Model 文件，寻找匹配项
-            const matchedModelFiles = [];
+            // 2. 【修正】遍历 Model 文件，严格寻找匹配项
             const unmatchedModelFiles = [];
 
             appState.filesModel.forEach(modelFile => {
                 const matchKey = extractMatchKey(modelFile.name);
                 
                 if (matchKey) {
-                    // 查找 3T 文件夹中文件名包含该匹配键的文件
-                    const found3T = appState.files3T.find(threeTFile => threeTFile.name.includes(matchKey));
+                    // 查找 3T Map 中 Key 严格等于 Model Key 的文件
+                    const found3T = appState.threeTMap.get(matchKey);
                     
                     if (found3T) {
                         // 找到配对，将 [ModelFile, 3TFile] 存入列表
                         appState.comparisonPairs.push([modelFile, found3T]);
-                        matchedModelFiles.push(modelFile.name);
                     } else {
                         unmatchedModelFiles.push(modelFile.name);
                     }
@@ -522,7 +528,7 @@
                 }
             });
             
-            // 3. 随机化任务顺序 (基于 Model 文件的顺序)
+            // 3. 随机化任务顺序
             shuffleArray(appState.comparisonPairs);
 
             elements.totalTasksCount.textContent = appState.comparisonPairs.length;
@@ -531,7 +537,8 @@
             console.log(`总 3T 文件: ${appState.files3T.length}`);
             console.log(`成功匹配任务数: ${appState.comparisonPairs.length}`);
             if (unmatchedModelFiles.length > 0) {
-                 console.warn(`未匹配 Model 文件 (${unmatchedModelFiles.length}):`, unmatchedModelFiles.slice(0, 10), '...');
+                 console.warn(`未匹配 Model 文件 (${unmatchedModelFiles.length}个):`, unmatchedModelFiles.slice(0, 10).join(', '), '...');
+                 // 如果未匹配文件过多，可以在这里给用户更显眼的提示
             }
         }
 
@@ -542,17 +549,14 @@
             appState.gameActive = true;
             appState.results = [];
             
-            // 更新界面
             elements.judgedCount.textContent = 0;
             elements.timerDisplay.textContent = '0.0秒';
             
-            // 启用按钮
             elements.leftBtn.disabled = false;
             elements.rightBtn.disabled = false;
             elements.restartBtn.disabled = false;
             elements.saveBtn.disabled = true;
             
-            // 显示第一对图像
             showNextPair();
         }
         
@@ -560,6 +564,7 @@
         function showNextPair() {
             appState.currentPairIndex++;
             
+            // 当 Model 文件对应的所有配对都显示完，游戏结束
             if (appState.currentPairIndex >= appState.comparisonPairs.length) {
                 endGame();
                 return;
@@ -598,7 +603,7 @@
                 placeholderElement.style.display = 'none';
             };
             imgElement.onerror = () => {
-                placeholderElement.textContent = '加载失败';
+                placeholderElement.textContent = `加载失败: ${imageFile.name}`;
                 placeholderElement.style.display = 'block';
                 imgElement.style.display = 'none';
             };
@@ -634,17 +639,12 @@
             const endTime = Date.now();
             const elapsed = (endTime - appState.startTime) / 1000;
             
-            const currentPairData = appState.currentPair;
-            
-            const chosenFile = chosenSide === 'Left' ? currentPairData.left : currentPairData.right;
-            const chosenType = chosenSide === 'Left' ? currentPairData.leftType : currentPairData.rightType;
-            
             appState.totalJudged++;
             elements.judgedCount.textContent = appState.totalJudged;
             
             recordResult({
                 chosenSide: chosenSide,
-                chosenType: chosenType, 
+                chosenType: chosenSide === 'Left' ? appState.currentPair.leftType : appState.currentPair.rightType, 
                 elapsedTime: elapsed.toFixed(1)
             });
             
@@ -653,7 +653,7 @@
             showNextPair();
         }
 
-        // 记录结果
+        // 记录结果 (保持不变)
         function recordResult(data) {
             const timestamp = new Date().toLocaleString();
             
@@ -702,18 +702,17 @@
             elements.gameOverModal.style.display = 'flex';
         }
 
-        // 重新开始游戏
+        // 重新开始游戏 (保持不变)
         function restartGame() {
             if (appState.filesModel.length > 0) {
                  elements.playerNameInput.value = appState.playerName;
                 elements.nameModal.style.display = 'flex';
-                // 再次准备图像对并启动
-                // 注意：这里需要确保 confirmNameBtn 确认后会重新开始
-                elements.confirmNameBtn.removeEventListener('click', confirmPlayerName); // 移除默认监听器
+                
+                elements.confirmNameBtn.removeEventListener('click', confirmPlayerName); 
                 elements.confirmNameBtn.addEventListener('click', () => {
-                    confirmPlayerName(); // 更新姓名
-                    prepareComparisonPairs(); // 重新准备任务列表
-                    startGame(); // 启动游戏
+                    confirmPlayerName(); 
+                    prepareComparisonPairs();
+                    startGame();
                 }, {once: true}); 
             } else {
                 alert('请先选择包含图像子文件夹的父文件夹');
@@ -727,19 +726,16 @@
                 return;
             }
             
-            // 创建CSV内容
             let csvContent = "时间戳,玩家姓名,任务编号,耗时(秒),Model文件名,3T文件名,左侧类型,右侧类型,选择侧别,选择类型\n";
             
             appState.results.forEach(result => {
                 csvContent += `${result.timestamp},${result.playerName},${result.taskNumber},${result.elapsedTime},${result.modelFilename},${result.threeTFilename},${result.leftType},${result.rightType},${result.chosenSide},${result.chosenType}\n`;
             });
             
-            // 创建下载链接
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             
-            // 设置文件名
             const dateStr = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
             const fileName = `对比判断结果-NameMatch-${appState.playerName}-${dateStr}.csv`;
             
