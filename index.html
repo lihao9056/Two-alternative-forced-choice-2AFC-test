@@ -151,7 +151,7 @@
             box-shadow: none;
         }
         
-        /* --- 新增：信心评分样式 --- */
+        /* --- 信心评分样式 --- */
         .confidence-section {
             text-align: center;
             margin-top: 20px;
@@ -195,10 +195,13 @@
         .conf-btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+            background: #eee; /* 禁用状态的背景色 */
+            color: #aaa;
+            border-color: #ddd;
         }
 
         .conf-btn.selected {
-            background: #4CAF50; /* 选中后的颜色 */
+            background: #4CAF50; 
             color: white;
             border-color: #4CAF50;
             box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
@@ -212,6 +215,7 @@
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 20px;
+            margin-top: 20px; /* 增加与评分区的间距 */
         }
         /* ... 省略其余未修改的 CSS ... */
         .info-item { text-align: center; }
@@ -421,12 +425,11 @@
             startTime: 0,
             timerInterval: null,
             results: [],
-            // 新增：用于暂存当前任务的结果
             currentChoice: null, // {chosenSide: 'Left'/'Right', chosenType: 'Model'/'3T', elapsedTime: 'X.X'}
             currentConfidence: null // 1-5
         };
 
-        // DOM元素 (新增信心评分按钮组)
+        // DOM元素 (保持不变)
         const elements = {
             playerNameDisplay: document.getElementById('player-name-display'),
             imageDisplayLeft: document.getElementById('image-display-left'),
@@ -435,7 +438,7 @@
             placeholderRight: document.getElementById('placeholder-right'),
             leftBtn: document.getElementById('left-btn'),
             rightBtn: document.getElementById('right-btn'),
-            confidenceButtons: document.getElementById('confidence-buttons').querySelectorAll('.conf-btn'), // 获取所有信心按钮
+            confidenceButtons: document.getElementById('confidence-buttons').querySelectorAll('.conf-btn'),
             totalTasksCount: document.getElementById('total-tasks-count'),
             judgedCount: document.getElementById('judged-count'),
             timerDisplay: document.getElementById('timer-display'),
@@ -455,21 +458,18 @@
             setupEventListeners();
             elements.totalTasksCount.textContent = 0;
             elements.judgedCount.textContent = 0;
-            // 确保信心评分按钮在开始时禁用
             setConfidenceButtonsEnabled(false);
             elements.nameModal.style.display = 'flex';
         }
 
-        // 设置事件监听器 (新增评分按钮监听)
+        // 设置事件监听器
         function setupEventListeners() {
             elements.confirmNameBtn.addEventListener('click', confirmPlayerName);
             elements.selectFolderBtn.addEventListener('click', selectImageFolder);
             
-            // 绑定判断按钮事件
             elements.leftBtn.addEventListener('click', () => recordChoice('Left'));
             elements.rightBtn.addEventListener('click', () => recordChoice('Right'));
             
-            // 绑定信心评分按钮事件
             elements.confidenceButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
                     recordConfidence(parseInt(this.dataset.confidence));
@@ -488,6 +488,11 @@
         function setChoiceButtonsEnabled(enabled) {
             elements.leftBtn.disabled = !enabled;
             elements.rightBtn.disabled = !enabled;
+            // 确保在禁用时移除焦点，视觉效果更清晰
+            if (!enabled) {
+                elements.leftBtn.blur();
+                elements.rightBtn.blur();
+            }
         }
 
         // 启用/禁用信心评分按钮
@@ -498,6 +503,14 @@
                     btn.classList.remove('selected');
                 }
             });
+        }
+
+        // 确认玩家姓名 (保持不变)
+        function confirmPlayerName() {
+            const name = elements.playerNameInput.value.trim();
+            appState.playerName = name || "匿名玩家";
+            elements.playerNameDisplay.textContent = `玩家: ${appState.playerName}`;
+            elements.nameModal.style.display = 'none';
         }
 
         // 选择图像父文件夹 (保持不变)
@@ -574,7 +587,7 @@
             console.log(`成功匹配任务数: ${appState.comparisonPairs.length}`);
         }
 
-        // 开始游戏
+        // 开始游戏 (保持不变)
         function startGame() {
             appState.currentPairIndex = -1;
             appState.totalJudged = 0;
@@ -587,14 +600,14 @@
             elements.timerDisplay.textContent = '0.0秒';
             
             setChoiceButtonsEnabled(true);
-            setConfidenceButtonsEnabled(false); // 启动时禁用评分
+            setConfidenceButtonsEnabled(false); 
             elements.restartBtn.disabled = false;
             elements.saveBtn.disabled = true;
             
             showNextPair();
         }
         
-        // 显示下一对图像
+        // 显示下一对图像 (重置状态，启用判断按钮)
         function showNextPair() {
             appState.currentPairIndex++;
             
@@ -606,8 +619,8 @@
             // 重置当前任务状态
             appState.currentChoice = null;
             appState.currentConfidence = null;
-            setChoiceButtonsEnabled(true); // 重新启用判断按钮
-            setConfidenceButtonsEnabled(false); // 禁用评分按钮
+            setChoiceButtonsEnabled(true);      // <--- 启用判断按钮
+            setConfidenceButtonsEnabled(false); // <--- 禁用评分按钮
 
             const [modelFile, threeTFile] = appState.comparisonPairs[appState.currentPairIndex];
             
@@ -628,6 +641,24 @@
             startTimer();
         }
 
+        // 显示单张图像 (保持不变)
+        function displayImage(imageFile, imgElement, placeholderElement) {
+            const objectURL = URL.createObjectURL(imageFile);
+
+            imgElement.onload = () => {
+                URL.revokeObjectURL(objectURL);
+                imgElement.style.display = 'block';
+                placeholderElement.style.display = 'none';
+            };
+            imgElement.onerror = () => {
+                placeholderElement.textContent = `加载失败: ${imageFile.name}`;
+                placeholderElement.style.display = 'block';
+                imgElement.style.display = 'none';
+            };
+
+            imgElement.src = objectURL;
+        }
+
         // 开始计时 (保持不变)
         function startTimer() {
             if (appState.timerInterval) {
@@ -642,9 +673,9 @@
             }, 100);
         }
 
-        // 记录用户选择 (修改：只记录，不立即跳转)
+        // 记录用户选择 (修正：确保状态切换正确)
         function recordChoice(chosenSide) {
-            if (!appState.gameActive || appState.currentChoice) return; // 防止重复点击
+            if (!appState.gameActive || appState.currentChoice) return; 
             
             // 停止计时
             if (appState.timerInterval) {
@@ -664,17 +695,20 @@
                 elapsedTime: elapsed.toFixed(1)
             };
             
-            // 禁用选择按钮，启用评分按钮
+            // 关键修正：禁用选择按钮，启用评分按钮
             setChoiceButtonsEnabled(false);
             setConfidenceButtonsEnabled(true);
             
             // 更新计时器显示（显示最终选择耗时）
-            elements.timerDisplay.textContent = `${appState.currentChoice.elapsedTime}秒`;
+            elements.timerDisplay.textContent = `${appState.currentChoice.elapsedTime}秒 (请评分)`;
+            
+            // 提示用户评分
+            console.log(`选择已记录: ${chosenSide}. 请进行信心评分 (1-5)。`);
         }
 
-        // 记录信心评分 (新增函数)
+        // 记录信心评分 (修正：确保状态切换和跳转正确)
         function recordConfidence(confidenceValue) {
-            if (!appState.currentChoice) return; // 必须先选择
+            if (!appState.currentChoice || appState.currentConfidence !== null) return; // 必须先选择，且不能重复评分
             
             appState.currentConfidence = confidenceValue;
 
@@ -692,12 +726,15 @@
             // 更新判断次数
             appState.totalJudged++;
             elements.judgedCount.textContent = appState.totalJudged;
+            
+            // 禁用评分按钮 (防止二次点击)
+            setConfidenceButtonsEnabled(false);
 
             // 跳转到下一对
             showNextPair();
         }
 
-        // 记录最终结果到数组
+        // 记录最终结果到数组 (保持不变)
         function recordFinalResult(confidenceValue) {
             const timestamp = new Date().toLocaleString();
             
@@ -707,20 +744,17 @@
             appState.results.push({
                 timestamp,
                 playerName: appState.playerName,
-                taskNumber: appState.totalJudged + 1, // 任务编号在记录时+1
+                taskNumber: appState.totalJudged + 1,
                 elapsedTime: appState.currentChoice.elapsedTime,
                 
-                // 图像信息
                 modelFilename: modelFile.name,
                 threeTFilename: threeTFile.name,
                 
-                // 选择信息
                 leftType: appState.currentPair.leftType,
                 rightType: appState.currentPair.rightType,
-                chosenSide: appState.currentChoice.chosenSide, // Left 或 Right
-                chosenType: appState.currentChoice.chosenType, // Model 或 3T
+                chosenSide: appState.currentChoice.chosenSide,
+                chosenType: appState.currentChoice.chosenType,
                 
-                // 新增：信心评分
                 confidenceScore: confidenceValue
             });
         }
@@ -766,14 +800,13 @@
             }
         }
 
-        // 保存结果 (CSV) (修改：增加信心评分列)
+        // 保存结果 (CSV) (保持不变)
         function saveResults() {
             if (appState.results.length === 0) {
                 alert('没有结果数据可保存');
                 return;
             }
             
-            // CSV 头部增加 ConfidenceScore 字段
             let csvContent = "时间戳,玩家姓名,任务编号,耗时(秒),Model文件名,3T文件名,左侧类型,右侧类型,选择侧别,选择类型,信心评分(1-5)\n";
             
             appState.results.forEach(result => {
