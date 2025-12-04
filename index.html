@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>强制选择对比判断工具 (严格名称配对)</title>
+    <title>强制选择对比判断工具 (带信心评分)</title>
     <style>
-        /* CSS 样式保持不变，因为布局和外观没有变化 */
+        /* 基础样式保持不变 */
         * {
             margin: 0;
             padding: 0;
@@ -151,6 +151,60 @@
             box-shadow: none;
         }
         
+        /* --- 新增：信心评分样式 --- */
+        .confidence-section {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        .confidence-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.1rem;
+        }
+        
+        .confidence-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .conf-btn {
+            width: 50px;
+            height: 50px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 50%;
+            border: 2px solid #5cb85c;
+            background: white;
+            color: #5cb85c;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .conf-btn:hover:not(:disabled) {
+            background: #5cb85c;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .conf-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .conf-btn.selected {
+            background: #4CAF50; /* 选中后的颜色 */
+            color: white;
+            border-color: #4CAF50;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+
+        /* --- 进度和操作按钮样式保持不变 --- */
         .progress-info {
              display: flex;
             justify-content: space-around;
@@ -159,60 +213,17 @@
             border-radius: 8px;
             margin-bottom: 20px;
         }
-
-        .info-item {
-            text-align: center;
-        }
-
-        .info-label {
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 5px;
-        }
-
-        .info-value {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #333;
-        }
-        
-        .action-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-        }
-        
-        .action-btn {
-            padding: 12px 25px;
-            background: #2196F3;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.3s;
-        }
-        
-        .action-btn:hover {
-            background: #0b7dda;
-            transform: translateY(-2px);
-        }
-        
-        #save-btn {
-            background: #FF9800;
-        }
-        
-        #save-btn:hover {
-            background: #e68a00;
-        }
-        
-        #restart-btn {
-            background: #9C27B0;
-        }
-        
-        #restart-btn:hover {
-            background: #7b1fa2;
-        }
+        /* ... 省略其余未修改的 CSS ... */
+        .info-item { text-align: center; }
+        .info-label { font-size: 0.9rem; color: #666; margin-bottom: 5px; }
+        .info-value { font-size: 1.2rem; font-weight: bold; color: #333; }
+        .action-buttons { display: flex; justify-content: center; gap: 15px; margin-top: 20px;}
+        .action-btn { padding: 12px 25px; background: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; transition: all 0.3s; }
+        .action-btn:hover { background: #0b7dda; transform: translateY(-2px); }
+        #save-btn { background: #FF9800; }
+        #save-btn:hover { background: #e68a00; }
+        #restart-btn { background: #9C27B0; }
+        #restart-btn:hover { background: #7b1fa2; }
 
         .modal {
             display: none;
@@ -286,14 +297,24 @@
             .action-btn {
                 width: 100%;
             }
+            .confidence-buttons {
+                flex-wrap: wrap;
+                justify-content: space-between;
+                max-width: 300px;
+                margin: 0 auto;
+            }
+            .conf-btn {
+                width: 45px;
+                height: 45px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>图像强制选择判断工具 (基于名称配对)</h1>
-            <div class="instruction">请选择您认为更优的图片</div>
+            <h1>图像强制选择判断工具 (带信心评分)</h1>
+            <div class="instruction">请选择您认为更优的图片，并给出您的信心评分</div>
             <div class="player-name" id="player-name-display">玩家: 未设置</div>
         </header>
         
@@ -311,12 +332,20 @@
                 </div>
             </div>
             
-            <div class="controls">
-                </div>
-            
             <div class="choice-buttons">
                 <button class="choice-btn" id="left-btn" disabled>左侧 (A) 更优</button>
                 <button class="choice-btn" id="right-btn" disabled>右侧 (B) 更优</button>
+            </div>
+            
+            <div class="confidence-section">
+                <h3>信心评分 (1 = 猜测, 5 = 绝对确定)</h3>
+                <div class="confidence-buttons" id="confidence-buttons">
+                    <button class="conf-btn" data-confidence="1" disabled>1</button>
+                    <button class="conf-btn" data-confidence="2" disabled>2</button>
+                    <button class="conf-btn" data-confidence="3" disabled>3</button>
+                    <button class="conf-btn" data-confidence="4" disabled>4</button>
+                    <button class="conf-btn" data-confidence="5" disabled>5</button>
+                </div>
             </div>
             
             <div class="progress-info">
@@ -361,7 +390,7 @@
     </div>
 
     <script>
-        // 实用函数：打乱数组
+        // 实用函数：打乱数组 (保持不变)
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -369,21 +398,35 @@
             }
         }
 
+        /**
+         * 提取配对键：Model/3T 文件名中第一个下划线之后的所有部分。
+         */
+        function extractMatchKey(filename) {
+            const firstUnderscoreIndex = filename.indexOf('_');
+            if (firstUnderscoreIndex === -1) {
+                return null;
+            }
+            return filename.substring(firstUnderscoreIndex + 1); 
+        }
+
         // 应用状态
         const appState = {
             playerName: "",
-            files3T: [],      // 3T 文件夹中的图像文件
-            filesModel: [],   // Model 文件夹中的图像文件
-            threeTMap: new Map(), // 存储 3T 文件，键为配对标准 (第一个下划线之后的部分)
-            comparisonPairs: [], // 待判断的图像对 [ModelFile, 3TFile]
-            currentPairIndex: -1, // 当前判断的图像对索引
+            files3T: [],
+            filesModel: [],
+            threeTMap: new Map(),
+            comparisonPairs: [],
+            currentPairIndex: -1,
             gameActive: false,
             startTime: 0,
             timerInterval: null,
-            results: []
+            results: [],
+            // 新增：用于暂存当前任务的结果
+            currentChoice: null, // {chosenSide: 'Left'/'Right', chosenType: 'Model'/'3T', elapsedTime: 'X.X'}
+            currentConfidence: null // 1-5
         };
 
-        // DOM元素 (保持不变)
+        // DOM元素 (新增信心评分按钮组)
         const elements = {
             playerNameDisplay: document.getElementById('player-name-display'),
             imageDisplayLeft: document.getElementById('image-display-left'),
@@ -392,6 +435,7 @@
             placeholderRight: document.getElementById('placeholder-right'),
             leftBtn: document.getElementById('left-btn'),
             rightBtn: document.getElementById('right-btn'),
+            confidenceButtons: document.getElementById('confidence-buttons').querySelectorAll('.conf-btn'), // 获取所有信心按钮
             totalTasksCount: document.getElementById('total-tasks-count'),
             judgedCount: document.getElementById('judged-count'),
             timerDisplay: document.getElementById('timer-display'),
@@ -411,16 +455,26 @@
             setupEventListeners();
             elements.totalTasksCount.textContent = 0;
             elements.judgedCount.textContent = 0;
+            // 确保信心评分按钮在开始时禁用
+            setConfidenceButtonsEnabled(false);
             elements.nameModal.style.display = 'flex';
         }
 
-        // 设置事件监听器
+        // 设置事件监听器 (新增评分按钮监听)
         function setupEventListeners() {
             elements.confirmNameBtn.addEventListener('click', confirmPlayerName);
             elements.selectFolderBtn.addEventListener('click', selectImageFolder);
             
+            // 绑定判断按钮事件
             elements.leftBtn.addEventListener('click', () => recordChoice('Left'));
             elements.rightBtn.addEventListener('click', () => recordChoice('Right'));
+            
+            // 绑定信心评分按钮事件
+            elements.confidenceButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    recordConfidence(parseInt(this.dataset.confidence));
+                });
+            });
             
             elements.restartBtn.addEventListener('click', restartGame);
             elements.saveBtn.addEventListener('click', saveResults);
@@ -429,16 +483,24 @@
                 elements.gameOverModal.style.display = 'none';
             });
         }
-
-        // 确认玩家姓名
-        function confirmPlayerName() {
-            const name = elements.playerNameInput.value.trim();
-            appState.playerName = name || "匿名玩家";
-            elements.playerNameDisplay.textContent = `玩家: ${appState.playerName}`;
-            elements.nameModal.style.display = 'none';
+        
+        // 启用/禁用判断按钮
+        function setChoiceButtonsEnabled(enabled) {
+            elements.leftBtn.disabled = !enabled;
+            elements.rightBtn.disabled = !enabled;
         }
 
-        // 选择图像父文件夹
+        // 启用/禁用信心评分按钮
+        function setConfidenceButtonsEnabled(enabled) {
+            elements.confidenceButtons.forEach(btn => {
+                btn.disabled = !enabled;
+                if (!enabled) {
+                    btn.classList.remove('selected');
+                }
+            });
+        }
+
+        // 选择图像父文件夹 (保持不变)
         function selectImageFolder() {
             const input = document.createElement('input');
             input.type = 'file';
@@ -463,7 +525,7 @@
                 prepareComparisonPairs();
                 
                 if (appState.comparisonPairs.length === 0) {
-                    alert('未找到任何配对成功的图像对。请检查文件命名规则：Model 和 3T 文件名中第一个下划线后的部分必须严格相同。');
+                    alert('未找到任何配对成功的图像对。请检查文件命名规则。');
                     return;
                 }
 
@@ -473,52 +535,29 @@
             input.click();
         }
 
-        /**
-         * 【修正】提取配对键：Model/3T 文件名中第一个下划线之后的所有部分。
-         * @param {string} filename 文件名，如 "A_B_C.png" 或 "M_B_C.png"
-         * @returns {string | null} 配对键，如 "B_C.png"
-         */
-        function extractMatchKey(filename) {
-            const firstUnderscoreIndex = filename.indexOf('_');
-            if (firstUnderscoreIndex === -1) {
-                return null; // 没有下划线，无法配对
-            }
-            // 返回第一个下划线之后的所有内容
-            return filename.substring(firstUnderscoreIndex + 1); 
-        }
-
-
-        // 准备对比图像对 (核心修改)
+        // 准备对比图像对 (保持不变)
         function prepareComparisonPairs() {
             appState.comparisonPairs = [];
             
-            // 1. 【修正】构建 3T 文件的 Map，键为配对标准 (第一个下划线之后的部分)
-            // Key: "B_C.png" -> Value: File Object (3T 文件)
             appState.threeTMap.clear();
             appState.files3T.forEach(file => {
                 const key = extractMatchKey(file.name);
                 if (key) {
-                    // 如果多个 3T 文件配对键相同，取第一个（您这里假设是一一对应）
                     if (!appState.threeTMap.has(key)) {
                         appState.threeTMap.set(key, file);
-                    } else {
-                        console.warn(`警告: 3T 文件配对键重复: ${key}`);
                     }
                 }
             });
 
-            // 2. 【修正】遍历 Model 文件，严格寻找匹配项
             const unmatchedModelFiles = [];
 
             appState.filesModel.forEach(modelFile => {
                 const matchKey = extractMatchKey(modelFile.name);
                 
                 if (matchKey) {
-                    // 查找 3T Map 中 Key 严格等于 Model Key 的文件
                     const found3T = appState.threeTMap.get(matchKey);
                     
                     if (found3T) {
-                        // 找到配对，将 [ModelFile, 3TFile] 存入列表
                         appState.comparisonPairs.push([modelFile, found3T]);
                     } else {
                         unmatchedModelFiles.push(modelFile.name);
@@ -528,18 +567,11 @@
                 }
             });
             
-            // 3. 随机化任务顺序
             shuffleArray(appState.comparisonPairs);
 
             elements.totalTasksCount.textContent = appState.comparisonPairs.length;
             
-            console.log(`总 Model 文件: ${appState.filesModel.length}`);
-            console.log(`总 3T 文件: ${appState.files3T.length}`);
             console.log(`成功匹配任务数: ${appState.comparisonPairs.length}`);
-            if (unmatchedModelFiles.length > 0) {
-                 console.warn(`未匹配 Model 文件 (${unmatchedModelFiles.length}个):`, unmatchedModelFiles.slice(0, 10).join(', '), '...');
-                 // 如果未匹配文件过多，可以在这里给用户更显眼的提示
-            }
         }
 
         // 开始游戏
@@ -548,12 +580,14 @@
             appState.totalJudged = 0;
             appState.gameActive = true;
             appState.results = [];
+            appState.currentChoice = null;
+            appState.currentConfidence = null;
             
             elements.judgedCount.textContent = 0;
             elements.timerDisplay.textContent = '0.0秒';
             
-            elements.leftBtn.disabled = false;
-            elements.rightBtn.disabled = false;
+            setChoiceButtonsEnabled(true);
+            setConfidenceButtonsEnabled(false); // 启动时禁用评分
             elements.restartBtn.disabled = false;
             elements.saveBtn.disabled = true;
             
@@ -564,20 +598,23 @@
         function showNextPair() {
             appState.currentPairIndex++;
             
-            // 当 Model 文件对应的所有配对都显示完，游戏结束
             if (appState.currentPairIndex >= appState.comparisonPairs.length) {
                 endGame();
                 return;
             }
+            
+            // 重置当前任务状态
+            appState.currentChoice = null;
+            appState.currentConfidence = null;
+            setChoiceButtonsEnabled(true); // 重新启用判断按钮
+            setConfidenceButtonsEnabled(false); // 禁用评分按钮
 
             const [modelFile, threeTFile] = appState.comparisonPairs[appState.currentPairIndex];
             
-            // 随机决定 3T 和 Model 的左右位置
             const flip = Math.random() < 0.5;
             const leftFile = flip ? threeTFile : modelFile;
             const rightFile = flip ? modelFile : threeTFile;
 
-            // 标记哪边是 Model, 哪边是 3T (用于记录结果)
             appState.currentPair = {
                 left: leftFile,
                 right: rightFile,
@@ -585,30 +622,10 @@
                 rightType: flip ? 'Model' : '3T'
             };
 
-            // 显示图像
             displayImage(leftFile, elements.imageDisplayLeft, elements.placeholderLeft);
             displayImage(rightFile, elements.imageDisplayRight, elements.placeholderRight);
             
-            // 开始计时
             startTimer();
-        }
-
-        // 显示单张图像 (保持不变)
-        function displayImage(imageFile, imgElement, placeholderElement) {
-            const objectURL = URL.createObjectURL(imageFile);
-
-            imgElement.onload = () => {
-                URL.revokeObjectURL(objectURL);
-                imgElement.style.display = 'block';
-                placeholderElement.style.display = 'none';
-            };
-            imgElement.onerror = () => {
-                placeholderElement.textContent = `加载失败: ${imageFile.name}`;
-                placeholderElement.style.display = 'block';
-                imgElement.style.display = 'none';
-            };
-
-            imgElement.src = objectURL;
         }
 
         // 开始计时 (保持不变)
@@ -616,9 +633,7 @@
             if (appState.timerInterval) {
                 clearInterval(appState.timerInterval);
             }
-            
             appState.startTime = Date.now();
-            
             appState.timerInterval = setInterval(() => {
                 if (appState.gameActive) {
                     const elapsed = (Date.now() - appState.startTime) / 1000;
@@ -627,10 +642,11 @@
             }, 100);
         }
 
-        // 记录用户选择 (保持不变)
+        // 记录用户选择 (修改：只记录，不立即跳转)
         function recordChoice(chosenSide) {
-            if (!appState.gameActive) return;
+            if (!appState.gameActive || appState.currentChoice) return; // 防止重复点击
             
+            // 停止计时
             if (appState.timerInterval) {
                 clearInterval(appState.timerInterval);
                 appState.timerInterval = null;
@@ -639,22 +655,50 @@
             const endTime = Date.now();
             const elapsed = (endTime - appState.startTime) / 1000;
             
+            const chosenType = chosenSide === 'Left' ? appState.currentPair.leftType : appState.currentPair.rightType;
+            
+            // 暂存选择结果
+            appState.currentChoice = {
+                chosenSide: chosenSide,
+                chosenType: chosenType,
+                elapsedTime: elapsed.toFixed(1)
+            };
+            
+            // 禁用选择按钮，启用评分按钮
+            setChoiceButtonsEnabled(false);
+            setConfidenceButtonsEnabled(true);
+            
+            // 更新计时器显示（显示最终选择耗时）
+            elements.timerDisplay.textContent = `${appState.currentChoice.elapsedTime}秒`;
+        }
+
+        // 记录信心评分 (新增函数)
+        function recordConfidence(confidenceValue) {
+            if (!appState.currentChoice) return; // 必须先选择
+            
+            appState.currentConfidence = confidenceValue;
+
+            // 标记选中的评分按钮
+            elements.confidenceButtons.forEach(btn => {
+                btn.classList.remove('selected');
+                if (parseInt(btn.dataset.confidence) === confidenceValue) {
+                    btn.classList.add('selected');
+                }
+            });
+
+            // 正式记录结果
+            recordFinalResult(confidenceValue);
+            
+            // 更新判断次数
             appState.totalJudged++;
             elements.judgedCount.textContent = appState.totalJudged;
-            
-            recordResult({
-                chosenSide: chosenSide,
-                chosenType: chosenSide === 'Left' ? appState.currentPair.leftType : appState.currentPair.rightType, 
-                elapsedTime: elapsed.toFixed(1)
-            });
-            
-            elements.timerDisplay.textContent = '0.0秒';
-            
+
+            // 跳转到下一对
             showNextPair();
         }
 
-        // 记录结果 (保持不变)
-        function recordResult(data) {
+        // 记录最终结果到数组
+        function recordFinalResult(confidenceValue) {
             const timestamp = new Date().toLocaleString();
             
             const modelFile = appState.currentPair.leftType === 'Model' ? appState.currentPair.left : appState.currentPair.right;
@@ -663,8 +707,8 @@
             appState.results.push({
                 timestamp,
                 playerName: appState.playerName,
-                taskNumber: appState.totalJudged,
-                elapsedTime: data.elapsedTime,
+                taskNumber: appState.totalJudged + 1, // 任务编号在记录时+1
+                elapsedTime: appState.currentChoice.elapsedTime,
                 
                 // 图像信息
                 modelFilename: modelFile.name,
@@ -673,8 +717,11 @@
                 // 选择信息
                 leftType: appState.currentPair.leftType,
                 rightType: appState.currentPair.rightType,
-                chosenSide: data.chosenSide, // Left 或 Right
-                chosenType: data.chosenType, // Model 或 3T
+                chosenSide: appState.currentChoice.chosenSide, // Left 或 Right
+                chosenType: appState.currentChoice.chosenType, // Model 或 3T
+                
+                // 新增：信心评分
+                confidenceScore: confidenceValue
             });
         }
 
@@ -687,8 +734,8 @@
                 appState.timerInterval = null;
             }
             
-            elements.leftBtn.disabled = true;
-            elements.rightBtn.disabled = true;
+            setChoiceButtonsEnabled(false);
+            setConfidenceButtonsEnabled(false);
             elements.saveBtn.disabled = false;
             
             elements.imageDisplayLeft.style.display = 'none';
@@ -719,17 +766,18 @@
             }
         }
 
-        // 保存结果 (CSV) (保持不变)
+        // 保存结果 (CSV) (修改：增加信心评分列)
         function saveResults() {
             if (appState.results.length === 0) {
                 alert('没有结果数据可保存');
                 return;
             }
             
-            let csvContent = "时间戳,玩家姓名,任务编号,耗时(秒),Model文件名,3T文件名,左侧类型,右侧类型,选择侧别,选择类型\n";
+            // CSV 头部增加 ConfidenceScore 字段
+            let csvContent = "时间戳,玩家姓名,任务编号,耗时(秒),Model文件名,3T文件名,左侧类型,右侧类型,选择侧别,选择类型,信心评分(1-5)\n";
             
             appState.results.forEach(result => {
-                csvContent += `${result.timestamp},${result.playerName},${result.taskNumber},${result.elapsedTime},${result.modelFilename},${result.threeTFilename},${result.leftType},${result.rightType},${result.chosenSide},${result.chosenType}\n`;
+                csvContent += `${result.timestamp},${result.playerName},${result.taskNumber},${result.elapsedTime},${result.modelFilename},${result.threeTFilename},${result.leftType},${result.rightType},${result.chosenSide},${result.chosenType},${result.confidenceScore}\n`;
             });
             
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -737,7 +785,7 @@
             const link = document.createElement('a');
             
             const dateStr = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-            const fileName = `对比判断结果-NameMatch-${appState.playerName}-${dateStr}.csv`;
+            const fileName = `对比判断结果-Confidence-${appState.playerName}-${dateStr}.csv`;
             
             link.setAttribute('href', url);
             link.setAttribute('download', fileName);
