@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>强制选择对比判断工具 (带信心评分)</title>
+    <title>强制选择对比判断工具 (带信心/难度评分)</title>
     <style>
         /* 基础样式保持不变 */
         * {
@@ -151,8 +151,14 @@
             box-shadow: none;
         }
         
-        /* --- 信心评分样式 --- */
-        .confidence-section {
+        /* 选中选择按钮的视觉反馈 */
+        .choice-btn.selected {
+            border: 4px solid #f44336; 
+            transform: translateY(-5px); 
+        }
+
+        /* --- 评分公共样式 --- */
+        .rating-section {
             text-align: center;
             margin-top: 20px;
             padding: 15px;
@@ -161,45 +167,49 @@
             background: #f9f9f9;
         }
         
-        .confidence-section h3 {
+        .rating-section h3 {
             margin-bottom: 15px;
             color: #333;
             font-size: 1.1rem;
         }
         
-        .confidence-buttons {
+        .rating-buttons {
             display: flex;
             justify-content: center;
             gap: 10px;
         }
         
-        .conf-btn {
+        .rate-btn {
             width: 50px;
             height: 50px;
             font-size: 1.2rem;
             font-weight: bold;
             border-radius: 50%;
-            border: 2px solid #5cb85c;
+            border: 2px solid;
             background: white;
-            color: #5cb85c;
             cursor: pointer;
             transition: all 0.2s;
         }
 
+        .rate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background: #eee; 
+            color: #aaa;
+            border-color: #ddd;
+            transform: none;
+        }
+
+        /* 信心评分特定样式 */
+        .conf-btn {
+            border-color: #5cb85c;
+            color: #5cb85c;
+        }
         .conf-btn:hover:not(:disabled) {
             background: #5cb85c;
             color: white;
             transform: scale(1.05);
         }
-
-        .conf-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            background: #eee; /* 禁用状态的背景色 */
-            color: #aaa;
-            border-color: #ddd;
-        }
-
         .conf-btn.selected {
             background: #4CAF50; 
             color: white;
@@ -207,17 +217,33 @@
             box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
         }
 
+        /* 难度评分特定样式 */
+        .diff-btn {
+            border-color: #f0ad4e;
+            color: #f0ad4e;
+        }
+        .diff-btn:hover:not(:disabled) {
+            background: #f0ad4e;
+            color: white;
+            transform: scale(1.05);
+        }
+        .diff-btn.selected {
+            background: #FFC107; 
+            color: white;
+            border-color: #FFC107;
+            box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+        }
+        
         /* --- 进度和操作按钮样式保持不变 --- */
         .progress-info {
-             display: flex;
+            display: flex;
             justify-content: space-around;
             background: #f5f5f5;
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 20px;
-            margin-top: 20px; /* 增加与评分区的间距 */
+            margin-top: 20px; 
         }
-        /* ... 省略其余未修改的 CSS ... */
         .info-item { text-align: center; }
         .info-label { font-size: 0.9rem; color: #666; margin-bottom: 5px; }
         .info-value { font-size: 1.2rem; font-weight: bold; color: #333; }
@@ -301,13 +327,13 @@
             .action-btn {
                 width: 100%;
             }
-            .confidence-buttons {
+            .rating-buttons {
                 flex-wrap: wrap;
                 justify-content: space-between;
                 max-width: 300px;
                 margin: 0 auto;
             }
-            .conf-btn {
+            .rate-btn {
                 width: 45px;
                 height: 45px;
             }
@@ -317,8 +343,8 @@
 <body>
     <div class="container">
         <header>
-            <h1>图像强制选择判断工具 (带信心评分)</h1>
-            <div class="instruction">请选择您认为更优的图片，并给出您的信心评分</div>
+            <h1>图像强制选择判断工具 (信心/难度评分)</h1>
+            <div class="instruction">请选择您认为更优的图片，并给出您的**信心**和**判别难度**评分</div>
             <div class="player-name" id="player-name-display">玩家: 未设置</div>
         </header>
         
@@ -341,14 +367,25 @@
                 <button class="choice-btn" id="right-btn" disabled>右侧 (B) 更优</button>
             </div>
             
-            <div class="confidence-section">
+            <div class="rating-section" id="confidence-section">
                 <h3>信心评分 (1 = 猜测, 5 = 绝对确定)</h3>
-                <div class="confidence-buttons" id="confidence-buttons">
-                    <button class="conf-btn" data-confidence="1" disabled>1</button>
-                    <button class="conf-btn" data-confidence="2" disabled>2</button>
-                    <button class="conf-btn" data-confidence="3" disabled>3</button>
-                    <button class="conf-btn" data-confidence="4" disabled>4</button>
-                    <button class="conf-btn" data-confidence="5" disabled>5</button>
+                <div class="rating-buttons" id="confidence-buttons">
+                    <button class="rate-btn conf-btn" data-confidence="1" disabled>1</button>
+                    <button class="rate-btn conf-btn" data-confidence="2" disabled>2</button>
+                    <button class="rate-btn conf-btn" data-confidence="3" disabled>3</button>
+                    <button class="rate-btn conf-btn" data-confidence="4" disabled>4</button>
+                    <button class="rate-btn conf-btn" data-confidence="5" disabled>5</button>
+                </div>
+            </div>
+
+            <div class="rating-section" id="difficulty-section">
+                <h3>判别难度 (1 = 极易分辨, 5 = 极难分辨)</h3>
+                <div class="rating-buttons" id="difficulty-buttons">
+                    <button class="rate-btn diff-btn" data-difficulty="1" disabled>1</button>
+                    <button class="rate-btn diff-btn" data-difficulty="2" disabled>2</button>
+                    <button class="rate-btn diff-btn" data-difficulty="3" disabled>3</button>
+                    <button class="rate-btn diff-btn" data-difficulty="4" disabled>4</button>
+                    <button class="rate-btn diff-btn" data-difficulty="5" disabled>5</button>
                 </div>
             </div>
             
@@ -425,11 +462,12 @@
             startTime: 0,
             timerInterval: null,
             results: [],
-            currentChoice: null, // {chosenSide: 'Left'/'Right', chosenType: 'Model'/'3T', elapsedTime: 'X.X'}
-            currentConfidence: null // 1-5
+            currentChoice: null,     // {chosenSide, chosenType, elapsedTime}
+            currentConfidence: null, // 1-5
+            currentDifficulty: null  // 1-5 <--- 新增难度状态
         };
 
-        // DOM元素 (保持不变)
+        // DOM元素
         const elements = {
             playerNameDisplay: document.getElementById('player-name-display'),
             imageDisplayLeft: document.getElementById('image-display-left'),
@@ -439,6 +477,7 @@
             leftBtn: document.getElementById('left-btn'),
             rightBtn: document.getElementById('right-btn'),
             confidenceButtons: document.getElementById('confidence-buttons').querySelectorAll('.conf-btn'),
+            difficultyButtons: document.getElementById('difficulty-buttons').querySelectorAll('.diff-btn'), // <--- 新增难度按钮
             totalTasksCount: document.getElementById('total-tasks-count'),
             judgedCount: document.getElementById('judged-count'),
             timerDisplay: document.getElementById('timer-display'),
@@ -458,7 +497,7 @@
             setupEventListeners();
             elements.totalTasksCount.textContent = 0;
             elements.judgedCount.textContent = 0;
-            setConfidenceButtonsEnabled(false);
+            setRatingButtonsEnabled(false); // 统一设置评分/难度按钮
             elements.nameModal.style.display = 'flex';
         }
 
@@ -470,9 +509,17 @@
             elements.leftBtn.addEventListener('click', () => recordChoice('Left'));
             elements.rightBtn.addEventListener('click', () => recordChoice('Right'));
             
+            // 信心评分事件
             elements.confidenceButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
                     recordConfidence(parseInt(this.dataset.confidence));
+                });
+            });
+            
+            // 难度评分事件 <--- 新增难度事件监听
+            elements.difficultyButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    recordDifficulty(parseInt(this.dataset.difficulty));
                 });
             });
             
@@ -488,16 +535,25 @@
         function setChoiceButtonsEnabled(enabled) {
             elements.leftBtn.disabled = !enabled;
             elements.rightBtn.disabled = !enabled;
-            // 确保在禁用时移除焦点，视觉效果更清晰
             if (!enabled) {
                 elements.leftBtn.blur();
                 elements.rightBtn.blur();
+                elements.leftBtn.classList.remove('selected');
+                elements.rightBtn.classList.remove('selected');
             }
         }
 
-        // 启用/禁用信心评分按钮
-        function setConfidenceButtonsEnabled(enabled) {
+        // 启用/禁用评分和难度按钮
+        function setRatingButtonsEnabled(enabled) {
+            // 信心按钮
             elements.confidenceButtons.forEach(btn => {
+                btn.disabled = !enabled;
+                if (!enabled) {
+                    btn.classList.remove('selected');
+                }
+            });
+            // 难度按钮 <--- 统一控制难度按钮
+            elements.difficultyButtons.forEach(btn => {
                 btn.disabled = !enabled;
                 if (!enabled) {
                     btn.classList.remove('selected');
@@ -550,6 +606,7 @@
 
         // 准备对比图像对 (保持不变)
         function prepareComparisonPairs() {
+            // ... (省略 prepareComparisonPairs, 与原版一致)
             appState.comparisonPairs = [];
             
             appState.threeTMap.clear();
@@ -583,8 +640,6 @@
             shuffleArray(appState.comparisonPairs);
 
             elements.totalTasksCount.textContent = appState.comparisonPairs.length;
-            
-            console.log(`成功匹配任务数: ${appState.comparisonPairs.length}`);
         }
 
         // 开始游戏 (保持不变)
@@ -595,12 +650,13 @@
             appState.results = [];
             appState.currentChoice = null;
             appState.currentConfidence = null;
+            appState.currentDifficulty = null; // <--- 重置难度状态
             
             elements.judgedCount.textContent = 0;
             elements.timerDisplay.textContent = '0.0秒';
             
             setChoiceButtonsEnabled(true);
-            setConfidenceButtonsEnabled(false); 
+            setRatingButtonsEnabled(false); 
             elements.restartBtn.disabled = false;
             elements.saveBtn.disabled = true;
             
@@ -619,8 +675,9 @@
             // 重置当前任务状态
             appState.currentChoice = null;
             appState.currentConfidence = null;
-            setChoiceButtonsEnabled(true);      // <--- 启用判断按钮
-            setConfidenceButtonsEnabled(false); // <--- 禁用评分按钮
+            appState.currentDifficulty = null; // <--- 重置难度状态
+            setChoiceButtonsEnabled(true);      // 启用判断按钮
+            setRatingButtonsEnabled(false);     // 禁用评分/难度按钮
 
             const [modelFile, threeTFile] = appState.comparisonPairs[appState.currentPairIndex];
             
@@ -673,10 +730,8 @@
             }, 100);
         }
 
-        // 记录用户选择 (修正：确保状态切换正确)
-        // 记录用户选择
+        // 记录用户选择 (修改：禁用选择按钮，启用评分按钮)
         function recordChoice(chosenSide) {
-            // 【重要】如果已做出选择（appState.currentChoice 不为空），则阻止重复操作
             if (!appState.gameActive || appState.currentChoice) return; 
             
             // 停止计时
@@ -684,7 +739,7 @@
                 clearInterval(appState.timerInterval);
                 appState.timerInterval = null;
             }
-        
+
             const endTime = Date.now();
             const elapsed = (endTime - appState.startTime) / 1000;
             
@@ -697,29 +752,23 @@
                 elapsedTime: elapsed.toFixed(1)
             };
             
-            // 关键修正：禁用选择按钮，启用评分按钮
+            // 关键：禁用选择按钮，启用评分和难度按钮
             setChoiceButtonsEnabled(false);
-            setConfidenceButtonsEnabled(true);
+            setRatingButtonsEnabled(true);
             
-            // 更新计时器显示（提示用户评分）
-            elements.timerDisplay.textContent = `${appState.currentChoice.elapsedTime}秒 (请评分)`;
-            
-            // 确保移除所有选择按钮的选中高亮（虽然 CSS 中没有，但这是好习惯）
-            elements.leftBtn.classList.remove('selected');
-            elements.rightBtn.classList.remove('selected');
-            
-            // 可选：高亮用户选择的按钮，使其视觉更清晰
+            // 视觉反馈：高亮选中的按钮
             document.getElementById(chosenSide.toLowerCase() + '-btn').classList.add('selected');
+
+            // 更新计时器显示（显示最终选择耗时并提示评分）
+            elements.timerDisplay.textContent = `${appState.currentChoice.elapsedTime}秒 (请评分/难度)`;
         }
 
-        // 记录信心评分 (修正：确保状态切换和跳转正确)
-        // 记录信心评分
+        // 记录信心评分 (修改：记录评分，调用检查函数)
         function recordConfidence(confidenceValue) {
-            // 【重要】必须先选择，且不能重复评分
             if (!appState.currentChoice || appState.currentConfidence !== null) return; 
             
             appState.currentConfidence = confidenceValue;
-        
+
             // 标记选中的评分按钮
             elements.confidenceButtons.forEach(btn => {
                 btn.classList.remove('selected');
@@ -727,30 +776,53 @@
                     btn.classList.add('selected');
                 }
             });
-        
-            // 正式记录结果
-            recordFinalResult(confidenceValue);
-            
-            // 更新判断次数
-            appState.totalJudged++;
-            elements.judgedCount.textContent = appState.totalJudged;
-            
-            // 禁用评分按钮 (防止二次点击)
-            setConfidenceButtonsEnabled(false);
-            
-            // 移除选择按钮的高亮
-            elements.leftBtn.classList.remove('selected');
-            elements.rightBtn.classList.remove('selected');
-        
-            // 关键：跳转到下一对
-            // 使用 setTimeout 延迟跳转，给用户一个视觉反馈时间 (可选)
-            setTimeout(() => {
-                showNextPair();
-            }, 100); 
+
+            // 检查是否可以跳转到下一题
+            checkCompletionAndAdvance();
         }
 
-        // 记录最终结果到数组 (保持不变)
-        function recordFinalResult(confidenceValue) {
+        // 记录判别难度 <--- 新增难度记录函数
+        function recordDifficulty(difficultyValue) {
+            if (!appState.currentChoice || appState.currentDifficulty !== null) return; 
+            
+            appState.currentDifficulty = difficultyValue;
+
+            // 标记选中的难度按钮
+            elements.difficultyButtons.forEach(btn => {
+                btn.classList.remove('selected');
+                if (parseInt(btn.dataset.difficulty) === difficultyValue) {
+                    btn.classList.add('selected');
+                }
+            });
+
+            // 检查是否可以跳转到下一题
+            checkCompletionAndAdvance();
+        }
+        
+        // 检查是否完成两个评分并跳转 <--- 核心逻辑
+        function checkCompletionAndAdvance() {
+            if (appState.currentChoice && appState.currentConfidence !== null && appState.currentDifficulty !== null) {
+                
+                // 正式记录结果
+                recordFinalResult(appState.currentConfidence, appState.currentDifficulty);
+                
+                // 更新判断次数
+                appState.totalJudged++;
+                elements.judgedCount.textContent = appState.totalJudged;
+                
+                // 禁用所有评分按钮
+                setRatingButtonsEnabled(false);
+                
+                // 延迟跳转，给用户一个完成的视觉反馈
+                setTimeout(() => {
+                    showNextPair();
+                }, 100); 
+            }
+        }
+
+
+        // 记录最终结果到数组 (修改：新增难度参数)
+        function recordFinalResult(confidenceValue, difficultyValue) {
             const timestamp = new Date().toLocaleString();
             
             const modelFile = appState.currentPair.leftType === 'Model' ? appState.currentPair.left : appState.currentPair.right;
@@ -770,12 +842,14 @@
                 chosenSide: appState.currentChoice.chosenSide,
                 chosenType: appState.currentChoice.chosenType,
                 
-                confidenceScore: confidenceValue
+                confidenceScore: confidenceValue,
+                difficultyScore: difficultyValue // <--- 新增难度评分
             });
         }
 
         // 结束游戏 (保持不变)
         function endGame() {
+            // ... (省略 endGame, 与原版一致)
             appState.gameActive = false;
             
             if (appState.timerInterval) {
@@ -784,7 +858,7 @@
             }
             
             setChoiceButtonsEnabled(false);
-            setConfidenceButtonsEnabled(false);
+            setRatingButtonsEnabled(false);
             elements.saveBtn.disabled = false;
             
             elements.imageDisplayLeft.style.display = 'none';
@@ -815,17 +889,17 @@
             }
         }
 
-        // 保存结果 (CSV) (保持不变)
+        // 保存结果 (CSV) (修改：新增难度列)
         function saveResults() {
             if (appState.results.length === 0) {
                 alert('没有结果数据可保存');
                 return;
             }
             
-            let csvContent = "时间戳,玩家姓名,任务编号,耗时(秒),Model文件名,3T文件名,左侧类型,右侧类型,选择侧别,选择类型,信心评分(1-5)\n";
+            let csvContent = "时间戳,玩家姓名,任务编号,耗时(秒),Model文件名,3T文件名,左侧类型,右侧类型,选择侧别,选择类型,信心评分(1-5),判别难度(1-5)\n"; // <--- 新增难度列名
             
             appState.results.forEach(result => {
-                csvContent += `${result.timestamp},${result.playerName},${result.taskNumber},${result.elapsedTime},${result.modelFilename},${result.threeTFilename},${result.leftType},${result.rightType},${result.chosenSide},${result.chosenType},${result.confidenceScore}\n`;
+                csvContent += `${result.timestamp},${result.playerName},${result.taskNumber},${result.elapsedTime},${result.modelFilename},${result.threeTFilename},${result.leftType},${result.rightType},${result.chosenSide},${result.chosenType},${result.confidenceScore},${result.difficultyScore}\n`; // <--- 新增难度数据
             });
             
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -833,7 +907,7 @@
             const link = document.createElement('a');
             
             const dateStr = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-            const fileName = `对比判断结果-Confidence-${appState.playerName}-${dateStr}.csv`;
+            const fileName = `对比判断结果-Confidence_Difficulty-${appState.playerName}-${dateStr}.csv`;
             
             link.setAttribute('href', url);
             link.setAttribute('download', fileName);
