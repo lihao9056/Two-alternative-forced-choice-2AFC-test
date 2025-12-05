@@ -674,7 +674,9 @@
         }
 
         // 记录用户选择 (修正：确保状态切换正确)
+        // 记录用户选择
         function recordChoice(chosenSide) {
+            // 【重要】如果已做出选择（appState.currentChoice 不为空），则阻止重复操作
             if (!appState.gameActive || appState.currentChoice) return; 
             
             // 停止计时
@@ -682,7 +684,7 @@
                 clearInterval(appState.timerInterval);
                 appState.timerInterval = null;
             }
-
+        
             const endTime = Date.now();
             const elapsed = (endTime - appState.startTime) / 1000;
             
@@ -699,19 +701,25 @@
             setChoiceButtonsEnabled(false);
             setConfidenceButtonsEnabled(true);
             
-            // 更新计时器显示（显示最终选择耗时）
+            // 更新计时器显示（提示用户评分）
             elements.timerDisplay.textContent = `${appState.currentChoice.elapsedTime}秒 (请评分)`;
             
-            // 提示用户评分
-            console.log(`选择已记录: ${chosenSide}. 请进行信心评分 (1-5)。`);
+            // 确保移除所有选择按钮的选中高亮（虽然 CSS 中没有，但这是好习惯）
+            elements.leftBtn.classList.remove('selected');
+            elements.rightBtn.classList.remove('selected');
+            
+            // 可选：高亮用户选择的按钮，使其视觉更清晰
+            document.getElementById(chosenSide.toLowerCase() + '-btn').classList.add('selected');
         }
 
         // 记录信心评分 (修正：确保状态切换和跳转正确)
+        // 记录信心评分
         function recordConfidence(confidenceValue) {
-            if (!appState.currentChoice || appState.currentConfidence !== null) return; // 必须先选择，且不能重复评分
+            // 【重要】必须先选择，且不能重复评分
+            if (!appState.currentChoice || appState.currentConfidence !== null) return; 
             
             appState.currentConfidence = confidenceValue;
-
+        
             // 标记选中的评分按钮
             elements.confidenceButtons.forEach(btn => {
                 btn.classList.remove('selected');
@@ -719,7 +727,7 @@
                     btn.classList.add('selected');
                 }
             });
-
+        
             // 正式记录结果
             recordFinalResult(confidenceValue);
             
@@ -729,9 +737,16 @@
             
             // 禁用评分按钮 (防止二次点击)
             setConfidenceButtonsEnabled(false);
-
-            // 跳转到下一对
-            showNextPair();
+            
+            // 移除选择按钮的高亮
+            elements.leftBtn.classList.remove('selected');
+            elements.rightBtn.classList.remove('selected');
+        
+            // 关键：跳转到下一对
+            // 使用 setTimeout 延迟跳转，给用户一个视觉反馈时间 (可选)
+            setTimeout(() => {
+                showNextPair();
+            }, 100); 
         }
 
         // 记录最终结果到数组 (保持不变)
