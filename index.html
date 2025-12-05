@@ -158,9 +158,16 @@
         }
 
         /* --- 评分公共样式 --- */
-        .rating-section {
-            text-align: center;
+        .rating-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
             margin-top: 20px;
+        }
+
+        .rating-section {
+            flex: 1;
+            text-align: center;
             padding: 15px;
             border: 1px solid #ddd;
             border-radius: 8px;
@@ -170,7 +177,7 @@
         .rating-section h3 {
             margin-bottom: 15px;
             color: #333;
-            font-size: 1.1rem;
+            font-size: 1.0rem;
         }
         
         .rating-buttons {
@@ -180,9 +187,9 @@
         }
         
         .rate-btn {
-            width: 50px;
-            height: 50px;
-            font-size: 1.2rem;
+            width: 45px;
+            height: 45px;
+            font-size: 1.1rem;
             font-weight: bold;
             border-radius: 50%;
             border: 2px solid;
@@ -200,7 +207,7 @@
             transform: none;
         }
 
-        /* 信心评分特定样式 */
+        /* 信心评分特定样式 (绿色系) */
         .conf-btn {
             border-color: #5cb85c;
             color: #5cb85c;
@@ -217,7 +224,7 @@
             box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
         }
 
-        /* 难度评分特定样式 */
+        /* 难度评分特定样式 (橙黄色系) */
         .diff-btn {
             border-color: #f0ad4e;
             color: #f0ad4e;
@@ -309,6 +316,9 @@
             .comparison-container {
                 flex-direction: column;
             }
+            .rating-container {
+                flex-direction: column;
+            }
             .choice-buttons {
                 flex-direction: column;
                 gap: 10px;
@@ -327,24 +337,14 @@
             .action-btn {
                 width: 100%;
             }
-            .rating-buttons {
-                flex-wrap: wrap;
-                justify-content: space-between;
-                max-width: 300px;
-                margin: 0 auto;
-            }
-            .rate-btn {
-                width: 45px;
-                height: 45px;
-            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>图像强制选择判断工具 (信心/难度评分)</h1>
-            <div class="instruction">请选择您认为更优的图片，并给出您的**信心**和**判别难度**评分</div>
+            <h1>图像强制选择判断工具</h1>
+            <div class="instruction">1. 选择更优图片 -> 2. 评分信心与难度 -> 自动下一张</div>
             <div class="player-name" id="player-name-display">玩家: 未设置</div>
         </header>
         
@@ -367,25 +367,27 @@
                 <button class="choice-btn" id="right-btn" disabled>右侧 (B) 更优</button>
             </div>
             
-            <div class="rating-section" id="confidence-section">
-                <h3>信心评分 (1 = 猜测, 5 = 绝对确定)</h3>
-                <div class="rating-buttons" id="confidence-buttons">
-                    <button class="rate-btn conf-btn" data-confidence="1" disabled>1</button>
-                    <button class="rate-btn conf-btn" data-confidence="2" disabled>2</button>
-                    <button class="rate-btn conf-btn" data-confidence="3" disabled>3</button>
-                    <button class="rate-btn conf-btn" data-confidence="4" disabled>4</button>
-                    <button class="rate-btn conf-btn" data-confidence="5" disabled>5</button>
+            <div class="rating-container">
+                <div class="rating-section" id="confidence-section">
+                    <h3>您的信心 (1 = 猜测, 5 = 绝对确定)</h3>
+                    <div class="rating-buttons" id="confidence-buttons">
+                        <button class="rate-btn conf-btn" data-confidence="1" disabled>1</button>
+                        <button class="rate-btn conf-btn" data-confidence="2" disabled>2</button>
+                        <button class="rate-btn conf-btn" data-confidence="3" disabled>3</button>
+                        <button class="rate-btn conf-btn" data-confidence="4" disabled>4</button>
+                        <button class="rate-btn conf-btn" data-confidence="5" disabled>5</button>
+                    </div>
                 </div>
-            </div>
 
-            <div class="rating-section" id="difficulty-section">
-                <h3>判别难度 (1 = 极易分辨, 5 = 极难分辨)</h3>
-                <div class="rating-buttons" id="difficulty-buttons">
-                    <button class="rate-btn diff-btn" data-difficulty="1" disabled>1</button>
-                    <button class="rate-btn diff-btn" data-difficulty="2" disabled>2</button>
-                    <button class="rate-btn diff-btn" data-difficulty="3" disabled>3</button>
-                    <button class="rate-btn diff-btn" data-difficulty="4" disabled>4</button>
-                    <button class="rate-btn diff-btn" data-difficulty="5" disabled>5</button>
+                <div class="rating-section" id="difficulty-section">
+                    <h3>判别难度 (1 = 极易, 5 = 极难)</h3>
+                    <div class="rating-buttons" id="difficulty-buttons">
+                        <button class="rate-btn diff-btn" data-difficulty="1" disabled>1</button>
+                        <button class="rate-btn diff-btn" data-difficulty="2" disabled>2</button>
+                        <button class="rate-btn diff-btn" data-difficulty="3" disabled>3</button>
+                        <button class="rate-btn diff-btn" data-difficulty="4" disabled>4</button>
+                        <button class="rate-btn diff-btn" data-difficulty="5" disabled>5</button>
+                    </div>
                 </div>
             </div>
             
@@ -431,7 +433,7 @@
     </div>
 
     <script>
-        // 实用函数：打乱数组 (保持不变)
+        // 实用函数：打乱数组
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -441,6 +443,7 @@
 
         /**
          * 提取配对键：Model/3T 文件名中第一个下划线之后的所有部分。
+         * 例如: "Model_Case01_001.png" -> "Case01_001.png"
          */
         function extractMatchKey(filename) {
             const firstUnderscoreIndex = filename.indexOf('_');
@@ -464,7 +467,8 @@
             results: [],
             currentChoice: null,     // {chosenSide, chosenType, elapsedTime}
             currentConfidence: null, // 1-5
-            currentDifficulty: null  // 1-5 <--- 新增难度状态
+            currentDifficulty: null, // 1-5 (新增)
+            totalJudged: 0
         };
 
         // DOM元素
@@ -477,7 +481,7 @@
             leftBtn: document.getElementById('left-btn'),
             rightBtn: document.getElementById('right-btn'),
             confidenceButtons: document.getElementById('confidence-buttons').querySelectorAll('.conf-btn'),
-            difficultyButtons: document.getElementById('difficulty-buttons').querySelectorAll('.diff-btn'), // <--- 新增难度按钮
+            difficultyButtons: document.getElementById('difficulty-buttons').querySelectorAll('.diff-btn'), // 新增
             totalTasksCount: document.getElementById('total-tasks-count'),
             judgedCount: document.getElementById('judged-count'),
             timerDisplay: document.getElementById('timer-display'),
@@ -497,7 +501,7 @@
             setupEventListeners();
             elements.totalTasksCount.textContent = 0;
             elements.judgedCount.textContent = 0;
-            setRatingButtonsEnabled(false); // 统一设置评分/难度按钮
+            setRatingButtonsEnabled(false);
             elements.nameModal.style.display = 'flex';
         }
 
@@ -515,8 +519,8 @@
                     recordConfidence(parseInt(this.dataset.confidence));
                 });
             });
-            
-            // 难度评分事件 <--- 新增难度事件监听
+
+            // 难度评分事件 (新增)
             elements.difficultyButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
                     recordDifficulty(parseInt(this.dataset.difficulty));
@@ -538,30 +542,30 @@
             if (!enabled) {
                 elements.leftBtn.blur();
                 elements.rightBtn.blur();
+                // 仅当开始新一轮时清除高亮，不要在锁定按钮时清除
+                // elements.leftBtn.classList.remove('selected'); 
+                // elements.rightBtn.classList.remove('selected');
+            } else {
                 elements.leftBtn.classList.remove('selected');
                 elements.rightBtn.classList.remove('selected');
             }
         }
 
-        // 启用/禁用评分和难度按钮
+        // 启用/禁用评分按钮 (统一控制)
         function setRatingButtonsEnabled(enabled) {
-            // 信心按钮
+            // 信心
             elements.confidenceButtons.forEach(btn => {
                 btn.disabled = !enabled;
-                if (!enabled) {
-                    btn.classList.remove('selected');
-                }
+                if (!enabled) btn.classList.remove('selected');
             });
-            // 难度按钮 <--- 统一控制难度按钮
+            // 难度
             elements.difficultyButtons.forEach(btn => {
                 btn.disabled = !enabled;
-                if (!enabled) {
-                    btn.classList.remove('selected');
-                }
+                if (!enabled) btn.classList.remove('selected');
             });
         }
 
-        // 确认玩家姓名 (保持不变)
+        // 确认玩家姓名
         function confirmPlayerName() {
             const name = elements.playerNameInput.value.trim();
             appState.playerName = name || "匿名玩家";
@@ -569,7 +573,7 @@
             elements.nameModal.style.display = 'none';
         }
 
-        // 选择图像父文件夹 (保持不变)
+        // 选择图像父文件夹
         function selectImageFolder() {
             const input = document.createElement('input');
             input.type = 'file';
@@ -594,7 +598,7 @@
                 prepareComparisonPairs();
                 
                 if (appState.comparisonPairs.length === 0) {
-                    alert('未找到任何配对成功的图像对。请检查文件命名规则。');
+                    alert('未找到任何配对成功的图像对。请检查文件命名规则 (文件名需包含下划线 _ )。');
                     return;
                 }
 
@@ -604,12 +608,12 @@
             input.click();
         }
 
-        // 准备对比图像对 (保持不变)
+        // 准备对比图像对
         function prepareComparisonPairs() {
-            // ... (省略 prepareComparisonPairs, 与原版一致)
             appState.comparisonPairs = [];
-            
             appState.threeTMap.clear();
+            
+            // 构建哈希映射
             appState.files3T.forEach(file => {
                 const key = extractMatchKey(file.name);
                 if (key) {
@@ -619,30 +623,22 @@
                 }
             });
 
-            const unmatchedModelFiles = [];
-
+            // 进行配对
             appState.filesModel.forEach(modelFile => {
                 const matchKey = extractMatchKey(modelFile.name);
-                
                 if (matchKey) {
                     const found3T = appState.threeTMap.get(matchKey);
-                    
                     if (found3T) {
                         appState.comparisonPairs.push([modelFile, found3T]);
-                    } else {
-                        unmatchedModelFiles.push(modelFile.name);
                     }
-                } else {
-                    unmatchedModelFiles.push(modelFile.name);
                 }
             });
             
             shuffleArray(appState.comparisonPairs);
-
             elements.totalTasksCount.textContent = appState.comparisonPairs.length;
         }
 
-        // 开始游戏 (保持不变)
+        // 开始游戏
         function startGame() {
             appState.currentPairIndex = -1;
             appState.totalJudged = 0;
@@ -650,7 +646,7 @@
             appState.results = [];
             appState.currentChoice = null;
             appState.currentConfidence = null;
-            appState.currentDifficulty = null; // <--- 重置难度状态
+            appState.currentDifficulty = null;
             
             elements.judgedCount.textContent = 0;
             elements.timerDisplay.textContent = '0.0秒';
@@ -663,7 +659,7 @@
             showNextPair();
         }
         
-        // 显示下一对图像 (重置状态，启用判断按钮)
+        // 显示下一对图像
         function showNextPair() {
             appState.currentPairIndex++;
             
@@ -672,15 +668,17 @@
                 return;
             }
             
-            // 重置当前任务状态
+            // 重置状态
             appState.currentChoice = null;
             appState.currentConfidence = null;
-            appState.currentDifficulty = null; // <--- 重置难度状态
-            setChoiceButtonsEnabled(true);      // 启用判断按钮
-            setRatingButtonsEnabled(false);     // 禁用评分/难度按钮
+            appState.currentDifficulty = null;
+            
+            setChoiceButtonsEnabled(true); // 启用选择
+            setRatingButtonsEnabled(false); // 禁用评分
 
             const [modelFile, threeTFile] = appState.comparisonPairs[appState.currentPairIndex];
             
+            // 随机左右
             const flip = Math.random() < 0.5;
             const leftFile = flip ? threeTFile : modelFile;
             const rightFile = flip ? modelFile : threeTFile;
@@ -698,7 +696,7 @@
             startTimer();
         }
 
-        // 显示单张图像 (保持不变)
+        // 显示图像辅助函数
         function displayImage(imageFile, imgElement, placeholderElement) {
             const objectURL = URL.createObjectURL(imageFile);
 
@@ -716,7 +714,7 @@
             imgElement.src = objectURL;
         }
 
-        // 开始计时 (保持不变)
+        // 计时器
         function startTimer() {
             if (appState.timerInterval) {
                 clearInterval(appState.timerInterval);
@@ -730,7 +728,7 @@
             }, 100);
         }
 
-        // 记录用户选择 (修改：禁用选择按钮，启用评分按钮)
+        // 1. 用户选择左或右
         function recordChoice(chosenSide) {
             if (!appState.gameActive || appState.currentChoice) return; 
             
@@ -742,34 +740,30 @@
 
             const endTime = Date.now();
             const elapsed = (endTime - appState.startTime) / 1000;
-            
             const chosenType = chosenSide === 'Left' ? appState.currentPair.leftType : appState.currentPair.rightType;
             
-            // 暂存选择结果
+            // 记录选择
             appState.currentChoice = {
                 chosenSide: chosenSide,
                 chosenType: chosenType,
                 elapsedTime: elapsed.toFixed(1)
             };
             
-            // 关键：禁用选择按钮，启用评分和难度按钮
-            setChoiceButtonsEnabled(false);
-            setRatingButtonsEnabled(true);
+            // UI 反馈
+            setChoiceButtonsEnabled(false); // 锁定选择
+            setRatingButtonsEnabled(true);  // 解锁所有评分
             
-            // 视觉反馈：高亮选中的按钮
+            // 视觉高亮已选按钮
             document.getElementById(chosenSide.toLowerCase() + '-btn').classList.add('selected');
-
-            // 更新计时器显示（显示最终选择耗时并提示评分）
-            elements.timerDisplay.textContent = `${appState.currentChoice.elapsedTime}秒 (请评分/难度)`;
+            elements.timerDisplay.textContent = `${appState.currentChoice.elapsedTime}秒 (请完成两项评分)`;
         }
 
-        // 记录信心评分 (修改：记录评分，调用检查函数)
+        // 2. 用户记录信心
         function recordConfidence(confidenceValue) {
-            if (!appState.currentChoice || appState.currentConfidence !== null) return; 
+            if (!appState.currentChoice) return; // 必须先选图
             
             appState.currentConfidence = confidenceValue;
 
-            // 标记选中的评分按钮
             elements.confidenceButtons.forEach(btn => {
                 btn.classList.remove('selected');
                 if (parseInt(btn.dataset.confidence) === confidenceValue) {
@@ -777,17 +771,15 @@
                 }
             });
 
-            // 检查是否可以跳转到下一题
             checkCompletionAndAdvance();
         }
 
-        // 记录判别难度 <--- 新增难度记录函数
+        // 3. 用户记录难度 (新增)
         function recordDifficulty(difficultyValue) {
-            if (!appState.currentChoice || appState.currentDifficulty !== null) return; 
+            if (!appState.currentChoice) return; // 必须先选图
             
             appState.currentDifficulty = difficultyValue;
 
-            // 标记选中的难度按钮
             elements.difficultyButtons.forEach(btn => {
                 btn.classList.remove('selected');
                 if (parseInt(btn.dataset.difficulty) === difficultyValue) {
@@ -795,36 +787,32 @@
                 }
             });
 
-            // 检查是否可以跳转到下一题
             checkCompletionAndAdvance();
         }
-        
-        // 检查是否完成两个评分并跳转 <--- 核心逻辑
+
+        // 4. 检查是否完成并跳转
         function checkCompletionAndAdvance() {
+            // 只有当两个评分都有值时，才跳转
             if (appState.currentChoice && appState.currentConfidence !== null && appState.currentDifficulty !== null) {
                 
-                // 正式记录结果
-                recordFinalResult(appState.currentConfidence, appState.currentDifficulty);
+                // 记录完整数据
+                recordFinalResult();
                 
-                // 更新判断次数
                 appState.totalJudged++;
                 elements.judgedCount.textContent = appState.totalJudged;
                 
-                // 禁用所有评分按钮
-                setRatingButtonsEnabled(false);
-                
-                // 延迟跳转，给用户一个完成的视觉反馈
+                // 短暂延迟后进入下一题
                 setTimeout(() => {
                     showNextPair();
-                }, 100); 
+                }, 150); 
             }
         }
 
-
-        // 记录最终结果到数组 (修改：新增难度参数)
-        function recordFinalResult(confidenceValue, difficultyValue) {
+        // 记录最终结果
+        function recordFinalResult() {
             const timestamp = new Date().toLocaleString();
             
+            // 找出Model文件和3T文件具体是谁
             const modelFile = appState.currentPair.leftType === 'Model' ? appState.currentPair.left : appState.currentPair.right;
             const threeTFile = appState.currentPair.leftType === '3T' ? appState.currentPair.left : appState.currentPair.right;
             
@@ -842,14 +830,13 @@
                 chosenSide: appState.currentChoice.chosenSide,
                 chosenType: appState.currentChoice.chosenType,
                 
-                confidenceScore: confidenceValue,
-                difficultyScore: difficultyValue // <--- 新增难度评分
+                confidenceScore: appState.currentConfidence,
+                difficultyScore: appState.currentDifficulty // 新增字段
             });
         }
 
-        // 结束游戏 (保持不变)
+        // 结束游戏
         function endGame() {
-            // ... (省略 endGame, 与原版一致)
             appState.gameActive = false;
             
             if (appState.timerInterval) {
@@ -868,11 +855,11 @@
             elements.placeholderLeft.style.display = 'block';
             elements.placeholderRight.style.display = 'block';
 
-            elements.gameOverMessage.innerHTML = `所有 ${appState.totalJudged} 对图像已判断完毕！<br>请点击"保存结果"按钮保存您的判断数据 (CSV)。`;
+            elements.gameOverMessage.innerHTML = `所有 ${appState.totalJudged} 对图像已判断完毕！<br>请点击"保存结果"按钮下载数据 (CSV)。`;
             elements.gameOverModal.style.display = 'flex';
         }
 
-        // 重新开始游戏 (保持不变)
+        // 重新开始
         function restartGame() {
             if (appState.filesModel.length > 0) {
                  elements.playerNameInput.value = appState.playerName;
@@ -889,39 +876,38 @@
             }
         }
 
-        // 保存结果 (CSV) (修改：新增难度列)
+        // 保存 CSV
         function saveResults() {
             if (appState.results.length === 0) {
                 alert('没有结果数据可保存');
                 return;
             }
             
-            let csvContent = "时间戳,玩家姓名,任务编号,耗时(秒),Model文件名,3T文件名,左侧类型,右侧类型,选择侧别,选择类型,信心评分(1-5),判别难度(1-5)\n"; // <--- 新增难度列名
+            // 更新 CSV 表头，增加判别难度
+            let csvContent = "时间戳,玩家姓名,任务编号,耗时(秒),Model文件名,3T文件名,左侧类型,右侧类型,选择侧别,选择类型,信心评分(1-5),判别难度(1-5)\n";
             
             appState.results.forEach(result => {
-                csvContent += `${result.timestamp},${result.playerName},${result.taskNumber},${result.elapsedTime},${result.modelFilename},${result.threeTFilename},${result.leftType},${result.rightType},${result.chosenSide},${result.chosenType},${result.confidenceScore},${result.difficultyScore}\n`; // <--- 新增难度数据
+                csvContent += `${result.timestamp},${result.playerName},${result.taskNumber},${result.elapsedTime},${result.modelFilename},${result.threeTFilename},${result.leftType},${result.rightType},${result.chosenSide},${result.chosenType},${result.confidenceScore},${result.difficultyScore}\n`;
             });
             
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            // 处理 BOM 防止中文乱码
+            const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             
             const dateStr = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-            const fileName = `对比判断结果-Confidence_Difficulty-${appState.playerName}-${dateStr}.csv`;
+            const fileName = `判断结果_${appState.playerName}_${dateStr}.csv`;
             
             link.setAttribute('href', url);
             link.setAttribute('download', fileName);
             link.style.visibility = 'hidden';
-            
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-
-            alert('结果已保存为 CSV 文件。您可以使用 Excel 或其他电子表格软件打开。');
         }
 
-        // 初始化应用
-        window.onload = initApp;
+        // 启动初始化
+        initApp();
     </script>
 </body>
 </html>
