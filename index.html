@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>强制选择对比判断工具 (带信心评分)</title>
+    <title>强制选择对比判断工具 (带信心评分和暂停功能)</title>
     <style>
         /* 基础样式保持不变 */
         * {
@@ -262,8 +262,25 @@
         #pause-btn:hover { background: #e64a19; }
         #pause-btn.paused { background: #4CAF50; } /* 暂停状态的样式 */
         #pause-btn.paused:hover { background: #45a049; }
-        #pause-btn.paused::after { content: " (已暂停)"; }
 
+        /* 暂停状态覆盖层样式 */
+        .pause-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            z-index: 100;
+            border-radius: 10px;
+        }
+        
         .modal {
             display: none;
             position: fixed;
@@ -356,11 +373,13 @@
                     <div class="image-label">左侧图像 (A)</div>
                     <img class="image-display" id="image-display-left" alt="左侧图像">
                     <div class="placeholder" id="placeholder-left">等待选择文件夹</div>
+                    <div class="pause-overlay" id="pause-overlay-left" style="display: none;">已暂停</div>
                 </div>
                 <div class="image-wrapper" id="right-image-wrapper">
                     <div class="image-label">右侧图像 (B)</div>
                     <img class="image-display" id="image-display-right" alt="右侧图像">
                     <div class="placeholder" id="placeholder-right">等待选择文件夹</div>
+                    <div class="pause-overlay" id="pause-overlay-right" style="display: none;">已暂停</div>
                 </div>
             </div>
             
@@ -455,12 +474,13 @@
             currentPairIndex: -1,
             gameActive: false,
             startTime: 0,
-            elapsedTimeBeforePause: 0, // 新增：暂停前已用时间
+            pausedTime: 0,          // 暂停时的时间点
+            totalPausedTime: 0,     // 累计暂停时间
             timerInterval: null,
             results: [],
             currentChoice: null,     // {chosenSide, chosenType, elapsedTime}
             currentConfidence: null, // 1-5
-            isPaused: false,         // 新增：暂停状态
+            isPaused: false,         // 暂停状态
             totalJudged: 0
         };
 
@@ -471,6 +491,8 @@
             imageDisplayRight: document.getElementById('image-display-right'),
             placeholderLeft: document.getElementById('placeholder-left'),
             placeholderRight: document.getElementById('placeholder-right'),
+            pauseOverlayLeft: document.getElementById('pause-overlay-left'),
+            pauseOverlayRight: document.getElementById('pause-overlay-right'),
             leftBtn: document.getElementById('left-btn'),
             rightBtn: document.getElementById('right-btn'),
             confidenceButtons: document.getElementById('confidence-buttons').querySelectorAll('.conf-btn'),
@@ -478,7 +500,7 @@
             judgedCount: document.getElementById('judged-count'),
             timerDisplay: document.getElementById('timer-display'),
             selectFolderBtn: document.getElementById('select-folder-btn'),
-            pauseBtn: document.getElementById('pause-btn'), // 新增
+            pauseBtn: document.getElementById('pause-btn'),
             restartBtn: document.getElementById('restart-btn'),
             saveBtn: document.getElementById('save-btn'),
             nameModal: document.getElementById('name-modal'),
@@ -543,6 +565,42 @@
                 btn.disabled = !enabled || appState.isPaused;
                 if (!enabled || appState.isPaused) btn.classList.remove('selected');
             });
+        }
+
+        // 更新暂停界面状态
+        function updatePauseUI() {
+            if (appState.isPaused) {
+                // 显示暂停覆盖层
+                elements.pauseOverlayLeft.style.display = 'flex';
+                elements.pauseOverlayRight.style.display = 'flex';
+                elements.pauseBtn.textContent = '继续';
+                elements.pauseBtn.classList.add('paused');
+                
+                // 禁用所有交互按钮
+                setChoiceButtonsEnabled(false);
+                setRatingButtonsEnabled(false);
+                
+                // 更新计时器显示
+                const elapsed = (Date.now() - appState.startTime - appState.totalPausedTime) / 1000;
+                elements.timerDisplay.textContent = `${elapsed.toFixed(1)}秒 (已暂停)`;
+            } else {
+                // 隐藏暂停覆盖层
+                elements.pauseOverlayLeft.style.display = 'none';
+                elements.pauseOverlayRight.style.display = 'none';
+                elements.pauseBtn.textContent = '暂停';
+                elements.pauseBtn.classList.remove('paused');
+                
+                // 根据当前状态重新启用按钮
+                if (appState.currentChoice) {
+                    // 已经选择了图片，启用评分按钮
+                    setChoiceButtonsEnabled(false);
+                    setRatingButtonsEnabled(true);
+                } else {
+                    // 还未选择，启用选择按钮
+                    setChoiceButtonsEnabled(true);
+                    setRatingButtonsEnabled(false);
+                }
+            }
         }
 
         // 确认玩家姓名
@@ -627,7 +685,8 @@
             appState.results = [];
             appState.currentChoice = null;
             appState.currentConfidence = null;
-            appState.elapsedTimeBeforePause = 0;
+            appState.totalPausedTime = 0;
+            appState.pausedTime = 0;
             
             elements.judgedCount.textContent = 0;
             elements.timerDisplay.textContent = '0.0秒';
@@ -639,6 +698,10 @@
             elements.pauseBtn.classList.remove('paused');
             elements.restartBtn.disabled = false;
             elements.saveBtn.disabled = true;
+            
+            // 隐藏暂停覆盖层
+            elements.pauseOverlayLeft.style.display = 'none';
+            elements.pauseOverlayRight.style.display = 'none';
             
             showNextPair();
         }
@@ -697,15 +760,17 @@
             imgElement.src = objectURL;
         }
 
-        // 开始计时器
+        // 开始/更新计时器
         function startTimer() {
             if (appState.timerInterval) {
                 clearInterval(appState.timerInterval);
             }
-            appState.startTime = Date.now() - appState.elapsedTimeBeforePause;
+            
+            appState.startTime = Date.now() - appState.totalPausedTime;
+            
             appState.timerInterval = setInterval(() => {
                 if (appState.gameActive && !appState.isPaused) {
-                    const elapsed = (Date.now() - appState.startTime) / 1000;
+                    const elapsed = (Date.now() - appState.startTime - appState.totalPausedTime) / 1000;
                     elements.timerDisplay.textContent = `${elapsed.toFixed(1)}秒`;
                 }
             }, 100);
@@ -713,41 +778,30 @@
 
         // 暂停/继续切换
         function togglePause() {
-            if (!appState.gameActive || appState.currentChoice) return;
+            if (!appState.gameActive) return;
             
             appState.isPaused = !appState.isPaused;
             
             if (appState.isPaused) {
-                // 暂停状态
+                // 记录暂停开始时间
+                appState.pausedTime = Date.now();
+                
+                // 停止计时器
                 if (appState.timerInterval) {
                     clearInterval(appState.timerInterval);
                     appState.timerInterval = null;
                 }
-                // 记录暂停前的已用时间
-                appState.elapsedTimeBeforePause = Date.now() - appState.startTime;
-                
-                // 禁用所有操作按钮
-                setChoiceButtonsEnabled(false);
-                setRatingButtonsEnabled(false);
-                
-                elements.pauseBtn.textContent = '继续';
-                elements.pauseBtn.classList.add('paused');
-                elements.timerDisplay.textContent += ' (已暂停)';
             } else {
-                // 继续状态
-                setChoiceButtonsEnabled(true);
-                if (appState.currentConfidence === null) {
-                    setRatingButtonsEnabled(false);
-                } else {
-                    setRatingButtonsEnabled(true);
-                }
-                
-                elements.pauseBtn.textContent = '暂停';
-                elements.pauseBtn.classList.remove('paused');
+                // 计算暂停持续时间并累加
+                const pauseDuration = Date.now() - appState.pausedTime;
+                appState.totalPausedTime += pauseDuration;
                 
                 // 重新开始计时器
                 startTimer();
             }
+            
+            // 更新UI
+            updatePauseUI();
         }
 
         // 1. 用户选择左或右
@@ -761,7 +815,7 @@
             }
 
             const endTime = Date.now();
-            const elapsed = (endTime - appState.startTime) / 1000;
+            const elapsed = (endTime - appState.startTime - appState.totalPausedTime) / 1000;
             const chosenType = chosenSide === 'Left' ? appState.currentPair.leftType : appState.currentPair.rightType;
             
             // 记录选择
@@ -852,6 +906,10 @@
             elements.placeholderRight.textContent = "所有图像已判断完毕。";
             elements.placeholderLeft.style.display = 'block';
             elements.placeholderRight.style.display = 'block';
+            
+            // 隐藏暂停覆盖层
+            elements.pauseOverlayLeft.style.display = 'none';
+            elements.pauseOverlayRight.style.display = 'none';
 
             elements.gameOverMessage.innerHTML = `所有 ${appState.totalJudged} 对图像已判断完毕！<br>请点击"保存结果"按钮下载数据 (CSV)。`;
             elements.gameOverModal.style.display = 'flex';
@@ -881,7 +939,6 @@
                 return;
             }
             
-            // 更新 CSV 表头，移除了判别难度
             let csvContent = "时间戳,玩家姓名,任务编号,耗时(秒),Model文件名,3T文件名,左侧类型,右侧类型,选择侧别,选择类型,信心评分(1-5)\n";
             
             appState.results.forEach(result => {
