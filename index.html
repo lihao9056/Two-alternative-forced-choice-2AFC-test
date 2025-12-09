@@ -262,6 +262,9 @@
         #pause-btn:hover { background: #e64a19; }
         #pause-btn.paused { background: #4CAF50; } /* 暂停状态的样式 */
         #pause-btn.paused:hover { background: #45a049; }
+        #reselect-btn { background: #9C27B0; } /* 新增重新选择按钮样式 */
+        #reselect-btn:hover { background: #7b1fa2; }
+        #reselect-btn:disabled { background: #ccc; cursor: not-allowed; }
 
         /* 暂停状态覆盖层样式 */
         .pause-overlay {
@@ -419,6 +422,7 @@
             <div class="action-buttons">
                 <button class="action-btn" id="select-folder-btn">选择父文件夹</button>
                 <button class="action-btn" id="pause-btn" disabled>暂停</button>
+                <button class="action-btn" id="reselect-btn" disabled>重新选择</button>
                 <button class="action-btn" id="restart-btn" disabled>重新开始</button>
                 <button class="action-btn" id="save-btn" disabled>保存结果 (CSV)</button>
             </div>
@@ -481,7 +485,8 @@
             currentChoice: null,     // {chosenSide, chosenType, elapsedTime}
             currentConfidence: null, // 1-5
             isPaused: false,         // 暂停状态
-            totalJudged: 0
+            totalJudged: 0,
+            selectionStartTime: 0    // 当前选择开始时间（用于重新选择时重新计时）
         };
 
         // DOM元素
@@ -501,6 +506,7 @@
             timerDisplay: document.getElementById('timer-display'),
             selectFolderBtn: document.getElementById('select-folder-btn'),
             pauseBtn: document.getElementById('pause-btn'),
+            reselectBtn: document.getElementById('reselect-btn'),
             restartBtn: document.getElementById('restart-btn'),
             saveBtn: document.getElementById('save-btn'),
             nameModal: document.getElementById('name-modal'),
@@ -538,6 +544,9 @@
             // 暂停按钮事件
             elements.pauseBtn.addEventListener('click', togglePause);
             
+            // 重新选择按钮事件
+            elements.reselectBtn.addEventListener('click', resetSelection);
+            
             elements.restartBtn.addEventListener('click', restartGame);
             elements.saveBtn.addEventListener('click', saveResults);
             
@@ -567,6 +576,15 @@
             });
         }
 
+        // 更新重新选择按钮状态
+        function updateReselectButton() {
+            if (appState.currentChoice && !appState.currentConfidence && !appState.isPaused) {
+                elements.reselectBtn.disabled = false;
+            } else {
+                elements.reselectBtn.disabled = true;
+            }
+        }
+
         // 更新暂停界面状态
         function updatePauseUI() {
             if (appState.isPaused) {
@@ -579,6 +597,7 @@
                 // 禁用所有交互按钮
                 setChoiceButtonsEnabled(false);
                 setRatingButtonsEnabled(false);
+                elements.reselectBtn.disabled = true;
                 
                 // 更新计时器显示
                 const elapsed = (Date.now() - appState.startTime - appState.totalPausedTime) / 1000;
@@ -592,13 +611,15 @@
                 
                 // 根据当前状态重新启用按钮
                 if (appState.currentChoice) {
-                    // 已经选择了图片，启用评分按钮
+                    // 已经选择了图片，启用评分按钮和重新选择按钮
                     setChoiceButtonsEnabled(false);
                     setRatingButtonsEnabled(true);
+                    updateReselectButton();
                 } else {
                     // 还未选择，启用选择按钮
                     setChoiceButtonsEnabled(true);
                     setRatingButtonsEnabled(false);
+                    elements.reselectBtn.disabled = true;
                 }
             }
         }
@@ -687,6 +708,7 @@
             appState.currentConfidence = null;
             appState.totalPausedTime = 0;
             appState.pausedTime = 0;
+            appState.selectionStartTime = 0;
             
             elements.judgedCount.textContent = 0;
             elements.timerDisplay.textContent = '0.0秒';
@@ -696,6 +718,7 @@
             elements.pauseBtn.disabled = false;
             elements.pauseBtn.textContent = '暂停';
             elements.pauseBtn.classList.remove('paused');
+            elements.reselectBtn.disabled = true;
             elements.restartBtn.disabled = false;
             elements.saveBtn.disabled = true;
             
@@ -718,9 +741,11 @@
             // 重置状态
             appState.currentChoice = null;
             appState.currentConfidence = null;
+            appState.selectionStartTime = Date.now();
             
             setChoiceButtonsEnabled(true);
             setRatingButtonsEnabled(false);
+            elements.reselectBtn.disabled = true;
 
             const [modelFile, threeTFile] = appState.comparisonPairs[appState.currentPairIndex];
             
@@ -770,7 +795,17 @@
             
             appState.timerInterval = setInterval(() => {
                 if (appState.gameActive && !appState.isPaused) {
-                    const elapsed = (Date.now() - appState.startTime - appState.totalPausedTime) / 1000;
+                    // 计算从选择开始的时间
+                    const currentTime = Date.now();
+                    let elapsed;
+                    
+                    if (appState.currentChoice) {
+                        // 已经做出选择，显示选择用时
+                        elapsed = appState.currentChoice.elapsedTime;
+                    } else {
+                        // 还未做出选择，显示当前用时
+                        elapsed = (currentTime - appState.startTime - appState.totalPausedTime) / 1000;
+                    }
                     elements.timerDisplay.textContent = `${elapsed.toFixed(1)}秒`;
                 }
             }, 100);
@@ -828,10 +863,40 @@
             // UI 反馈
             setChoiceButtonsEnabled(false);
             setRatingButtonsEnabled(true);
+            elements.reselectBtn.disabled = false;
             
             // 视觉高亮已选按钮
             document.getElementById(chosenSide.toLowerCase() + '-btn').classList.add('selected');
-            elements.timerDisplay.textContent = `${appState.currentChoice.elapsedTime}秒 (请完成信心评分)`;
+            elements.timerDisplay.textContent = `${appState.currentChoice.elapsedTime}秒 (请完成信心评分或重新选择)`;
+        }
+
+        // 重置选择（重新选择功能）
+        function resetSelection() {
+            if (!appState.currentChoice || appState.isPaused || appState.currentConfidence) return;
+            
+            // 重置选择状态
+            appState.currentChoice = null;
+            appState.currentConfidence = null;
+            
+            // 重置UI
+            setChoiceButtonsEnabled(true);
+            setRatingButtonsEnabled(false);
+            elements.reselectBtn.disabled = true;
+            elements.leftBtn.classList.remove('selected');
+            elements.rightBtn.classList.remove('selected');
+            
+            // 重置信心评分按钮
+            elements.confidenceButtons.forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            // 重新开始计时（从选择开始重新计时）
+            appState.selectionStartTime = Date.now();
+            
+            // 重新开始计时器
+            startTimer();
+            
+            elements.timerDisplay.textContent = '0.0秒 (请重新选择)';
         }
 
         // 2. 用户记录信心
@@ -898,6 +963,7 @@
             setChoiceButtonsEnabled(false);
             setRatingButtonsEnabled(false);
             elements.pauseBtn.disabled = true;
+            elements.reselectBtn.disabled = true;
             elements.saveBtn.disabled = false;
             
             elements.imageDisplayLeft.style.display = 'none';
